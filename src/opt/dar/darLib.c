@@ -20,6 +20,7 @@
 
 #include "darInt.h"
 #include "aig/gia/gia.h"
+#include "base/main/main.h"
 #include "dar.h"
 
 ABC_NAMESPACE_IMPL_START
@@ -105,7 +106,21 @@ struct Dar_Lib_t_ // library
     unsigned char *  pMap;
 };
 
-static Dar_Lib_t * s_DarLib = NULL;
+static ABC_THREAD_LOCAL Dar_Lib_t * s_DarLibStandalone = NULL;
+
+static Dar_Lib_t * Dar_LibCurrent()
+{
+    return Abc_FrameReadGlobalFrame() ? (Dar_Lib_t *)Abc_FrameReadManDar() : s_DarLibStandalone;
+}
+static void Dar_LibSetCurrent( Dar_Lib_t * pLib )
+{
+    if ( Abc_FrameReadGlobalFrame() )
+        Abc_FrameSetManDar( pLib );
+    else
+        s_DarLibStandalone = pLib;
+}
+
+#define s_DarLib Dar_LibCurrent()
 
 static inline Dar_LibObj_t * Dar_LibObj( Dar_Lib_t * p, int Id )    { return p->pObjs + Id; }
 static inline int            Dar_LibObjTruth( Dar_LibObj_t * pObj ) { return pObj->Num < (0xFFFF & ~pObj->Num) ? pObj->Num : (0xFFFF & ~pObj->Num); }
@@ -596,7 +611,7 @@ void Dar_LibStart()
     if ( s_DarLib != NULL )
         return;
     assert( s_DarLib == NULL );
-    s_DarLib = Dar_LibRead();
+    Dar_LibSetCurrent( Dar_LibRead() );
 //    printf( "The 4-input library started with %d nodes and %d subgraphs. ", s_DarLib->nObjs - 4, s_DarLib->nSubgrTotal );
 //    ABC_PRT( "Time", Abc_Clock() - clk );
 }
@@ -616,7 +631,7 @@ void Dar_LibStop()
 {
     assert( s_DarLib != NULL );
     Dar_LibFree( s_DarLib );
-    s_DarLib = NULL;
+    Dar_LibSetCurrent( NULL );
 }
 
 /**Function*************************************************************
@@ -1338,4 +1353,3 @@ int Dar_LibEvalBuild( Gia_Man_t * p, Vec_Int_t * vCutLits, unsigned uTruth, int 
 
 
 ABC_NAMESPACE_IMPL_END
-
