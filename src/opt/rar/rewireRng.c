@@ -41,7 +41,7 @@ word Random_Word(int fReset) {
 // This procedure should be called once with Seed > 0 to initialize the generator.
 // After initialization, the generator should be always called with Seed == 0.
 unsigned Random_Num(int Seed) {
-    static unsigned RandMask = 0;
+    static ABC_THREAD_LOCAL unsigned RandMask = 0;
     if (Seed == 0)
         return RandMask ^ Random_Int(0);
     RandMask = Random_Int(1);

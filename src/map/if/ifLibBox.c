@@ -254,7 +254,7 @@ If_LibBox_t * If_LibBoxRead2( char * pFileName )
 ***********************************************************************/
 char * If_LibBoxGetToken( FILE * pFile )
 {
-    static char pBuffer[1000];
+    static ABC_THREAD_LOCAL char pBuffer[1000];
     int c; char * pTemp = pBuffer;
     while ( (c = fgetc(pFile)) != EOF )
     {
@@ -404,4 +404,3 @@ int If_LibBoxLoad( char * pFileName )
 
 
 ABC_NAMESPACE_IMPL_END
-

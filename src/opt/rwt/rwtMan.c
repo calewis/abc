@@ -28,10 +28,10 @@ ABC_NAMESPACE_IMPL_START
 ///                        DECLARATIONS                              ///
 ////////////////////////////////////////////////////////////////////////
 
-static unsigned short * s_puCanons = NULL; 
-static char *           s_pPhases = NULL; 
-static char *           s_pPerms = NULL; 
-static unsigned char *  s_pMap = NULL;
+static ABC_THREAD_LOCAL unsigned short * s_puCanons = NULL;
+static ABC_THREAD_LOCAL char *           s_pPhases = NULL;
+static ABC_THREAD_LOCAL char *           s_pPerms = NULL;
+static ABC_THREAD_LOCAL unsigned char *  s_pMap = NULL;
 
 ////////////////////////////////////////////////////////////////////////
 ///                     FUNCTION DEFINITIONS                         ///
@@ -360,4 +360,3 @@ void Rwt_Precompute()
 
 
 ABC_NAMESPACE_IMPL_END
-

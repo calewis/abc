@@ -1479,7 +1479,7 @@ unsigned DecisionDiagram::randomInt(int fReset) {
 }
 
 unsigned DecisionDiagram::randomNum(int Seed) {
-    static unsigned RandMask = 0;
+    static ABC_THREAD_LOCAL unsigned RandMask = 0;
     if (Seed == 0)
         return RandMask ^ randomInt(0);
     RandMask = randomInt(1);
