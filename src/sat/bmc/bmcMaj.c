@@ -643,7 +643,7 @@ void Exa_ManDumpBlif( Exa_Man_t * p, int fCompl )
     for ( i = 0; i < p->nVars; i++ )
         fprintf( pFile, " %c", 'a'+i );
     fprintf( pFile, "\n" );
-    fprintf( pFile, ".outputs F\n" );
+    fprintf( pFile, ".outputs FF\n" );
     for ( i = p->nObjs - 1; i >= p->nVars; i-- )
     {
         int iVarStart = 1 + 3*(i - p->nVars);//
@@ -659,7 +659,7 @@ void Exa_ManDumpBlif( Exa_Man_t * p, int fCompl )
             fprintf( pFile, " %s", Exa_ManObjName(p, iVar, Name) );
         }
         if ( i == p->nObjs - 1 )
-            fprintf( pFile, " F\n" );
+            fprintf( pFile, " FF\n" );
         else
             fprintf( pFile, " %s\n", Exa_ManObjName(p, i, Name) );
         if ( i == p->nObjs - 1 && fCompl )
@@ -2035,14 +2035,18 @@ char * Exa_TimeStamp()
 {
     static ABC_THREAD_LOCAL char Buffer[100];
     time_t ltime;
-    struct tm *tm_info;
+    struct tm Time;
 
     // Get the current time
     time(&ltime);
-    tm_info = localtime(&ltime);
+#ifdef _WIN32
+    localtime_s( &Time, &ltime );
+#else
+    localtime_r( &ltime, &Time );
+#endif
 
     // Format the time as YYYY_MM_DD__HH_MM_SS
-    strftime(Buffer, sizeof(Buffer), "%Y_%m_%d__%H_%M_%S", tm_info);
+    strftime(Buffer, sizeof(Buffer), "%Y_%m_%d__%H_%M_%S", &Time);
     
     return Buffer;
 }

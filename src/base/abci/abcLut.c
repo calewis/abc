@@ -245,7 +245,8 @@ void Abc_NodeLutMap( Cut_Man_t * pManCuts, Abc_Obj_t * pObj )
 ***********************************************************************/
 Cut_Man_t * Abc_NtkStartCutManForScl( Abc_Ntk_t * pNtk, int nLutSize )
 {
-    Cut_Params_t Params, * pParams = &Params;
+    static ABC_THREAD_LOCAL Cut_Params_t Params;
+    Cut_Params_t * pParams = &Params;
     Cut_Man_t * pManCut;
     Abc_Obj_t * pObj;
     int i;
