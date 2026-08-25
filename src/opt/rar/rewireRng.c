@@ -23,8 +23,8 @@
 ABC_NAMESPACE_IMPL_START
 
 unsigned Random_Int(int fReset) {
-    static unsigned int m_z = NUMBER1;
-    static unsigned int m_w = NUMBER2;
+    static ABC_THREAD_LOCAL unsigned int m_z = NUMBER1;
+    static ABC_THREAD_LOCAL unsigned int m_w = NUMBER2;
     if (fReset) {
         m_z = NUMBER1;
         m_w = NUMBER2;

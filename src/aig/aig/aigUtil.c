@@ -62,13 +62,18 @@ void Aig_ManIncrementTravId( Aig_Man_t * p )
 char * Aig_TimeStamp()
 {
     static ABC_THREAD_LOCAL char Buffer[100];
-    char * TimeStamp;
+    struct tm Time;
     time_t ltime;
     // get the current time
     time( &ltime );
-    TimeStamp = asctime( localtime( &ltime ) );
-    TimeStamp[ strlen(TimeStamp) - 1 ] = 0;
-    strcpy( Buffer, TimeStamp );
+#ifdef _WIN32
+    localtime_s( &Time, &ltime );
+#else
+    localtime_r( &ltime, &Time );
+#endif
+    strftime( Buffer, sizeof(Buffer), "%a %b %d %H:%M:%S %Y", &Time );
+    if ( Buffer[8] == '0' )
+        Buffer[8] = ' ';
     return Buffer;
 }
 

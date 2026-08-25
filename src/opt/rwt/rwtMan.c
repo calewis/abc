@@ -28,6 +28,7 @@ ABC_NAMESPACE_IMPL_START
 ///                        DECLARATIONS                              ///
 ////////////////////////////////////////////////////////////////////////
 
+// Immutable lookup tables are cached for the lifetime of each worker thread.
 static ABC_THREAD_LOCAL unsigned short * s_puCanons = NULL;
 static ABC_THREAD_LOCAL char *           s_pPhases = NULL;
 static ABC_THREAD_LOCAL char *           s_pPerms = NULL;
@@ -53,25 +54,6 @@ void Rwt_ManGlobalStart()
     if ( s_puCanons == NULL )
         Extra_Truth4VarNPN( &s_puCanons, &s_pPhases, &s_pPerms, &s_pMap );
 }
-
-/**Function*************************************************************
-
-  Synopsis    [Starts residual rewriting manager.]
-
-  Description []
-               
-  SideEffects []
-
-  SeeAlso     []
-
-***********************************************************************/
-void Rwt_ManGlobalStop()
-{ 
-    ABC_FREE( s_puCanons );
-    ABC_FREE( s_pPhases );
-    ABC_FREE( s_pPerms );
-    ABC_FREE( s_pMap );
-} 
 
 /**Function*************************************************************
 
