@@ -999,100 +999,125 @@ void Abc_ManResubDivsD( Abc_ManRes_t * p, int Required )
     Vec_PtrClear( p->vDivs2UN0 );
     Vec_PtrClear( p->vDivs2UN1 );
     puDataR = (unsigned *)p->pRoot->pData;
-    Vec_PtrForEachEntry( Abc_Obj_t *, p->vDivs1B, pObj0, i )
-    {
-        if ( (int)pObj0->Level > Required - 2 )
-            continue;
 
-        puData0 = (unsigned *)pObj0->pData;
-        Vec_PtrForEachEntryStart( Abc_Obj_t *, p->vDivs1B, pObj1, k, i + 1 )
+    if ( p->nWords == 1 )
+    {
+        unsigned careP = ~puDataR[0] & p->pCareSet[0];
+        unsigned careN =  puDataR[0] & p->pCareSet[0];
+        unsigned d0, d1;
+
+        Vec_PtrForEachEntry( Abc_Obj_t *, p->vDivs1B, pObj0, i )
         {
-            if ( (int)pObj1->Level > Required - 2 )
+            if ( (int)pObj0->Level > Required - 2 )
                 continue;
 
-            puData1 = (unsigned *)pObj1->pData;
-
-            if ( Vec_PtrSize(p->vDivs2UP0) < ABC_RS_DIV2_MAX )
+            d0 = ((unsigned *)pObj0->pData)[0];
+            Vec_PtrForEachEntryStart( Abc_Obj_t *, p->vDivs1B, pObj1, k, i + 1 )
             {
-                // get positive unate divisors
-                for ( w = 0; w < p->nWords; w++ )
-//                    if ( (puData0[w] & puData1[w]) & ~puDataR[w] )
-                    if ( (puData0[w] & puData1[w]) & ~puDataR[w] & p->pCareSet[w] ) // care set
-                        break;
-                if ( w == p->nWords )
+                if ( (int)pObj1->Level > Required - 2 )
+                    continue;
+
+                d1 = ((unsigned *)pObj1->pData)[0];
+
+                if ( Vec_PtrSize(p->vDivs2UP0) < ABC_RS_DIV2_MAX )
                 {
-                    Vec_PtrPush( p->vDivs2UP0, pObj0 );
-                    Vec_PtrPush( p->vDivs2UP1, pObj1 );
+                    if ( ((d0 & d1) & careP) == 0 )
+                    {
+                        Vec_PtrPush( p->vDivs2UP0, pObj0 );
+                        Vec_PtrPush( p->vDivs2UP1, pObj1 );
+                    }
+                    if ( ((~d0 & d1) & careP) == 0 )
+                    {
+                        Vec_PtrPush( p->vDivs2UP0, Abc_ObjNot(pObj0) );
+                        Vec_PtrPush( p->vDivs2UP1, pObj1 );
+                    }
+                    if ( ((d0 & ~d1) & careP) == 0 )
+                    {
+                        Vec_PtrPush( p->vDivs2UP0, pObj0 );
+                        Vec_PtrPush( p->vDivs2UP1, Abc_ObjNot(pObj1) );
+                    }
                 }
-                for ( w = 0; w < p->nWords; w++ )
-//                    if ( (~puData0[w] & puData1[w]) & ~puDataR[w] )
-                    if ( (~puData0[w] & puData1[w]) & ~puDataR[w] & p->pCareSet[w] ) // care set
-                        break;
-                if ( w == p->nWords )
+
+                if ( Vec_PtrSize(p->vDivs2UN0) < ABC_RS_DIV2_MAX )
                 {
-                    Vec_PtrPush( p->vDivs2UP0, Abc_ObjNot(pObj0) );
-                    Vec_PtrPush( p->vDivs2UP1, pObj1 );
-                }
-                for ( w = 0; w < p->nWords; w++ )
-//                    if ( (puData0[w] & ~puData1[w]) & ~puDataR[w] )
-                    if ( (puData0[w] & ~puData1[w]) & ~puDataR[w] & p->pCareSet[w] ) // care set
-                        break;
-                if ( w == p->nWords )
-                {
-                    Vec_PtrPush( p->vDivs2UP0, pObj0 );
-                    Vec_PtrPush( p->vDivs2UP1, Abc_ObjNot(pObj1) );
-                }
-                for ( w = 0; w < p->nWords; w++ )
-//                    if ( (puData0[w] | puData1[w]) & ~puDataR[w] )
-                    if ( (puData0[w] | puData1[w]) & ~puDataR[w] & p->pCareSet[w] ) // care set
-                        break;
-                if ( w == p->nWords )
-                {
-                    Vec_PtrPush( p->vDivs2UP0, Abc_ObjNot(pObj0) );
-                    Vec_PtrPush( p->vDivs2UP1, Abc_ObjNot(pObj1) );
+                    if ( (~(d0 | d1) & careN) == 0 )
+                    {
+                        Vec_PtrPush( p->vDivs2UN0, Abc_ObjNot(pObj0) );
+                        Vec_PtrPush( p->vDivs2UN1, Abc_ObjNot(pObj1) );
+                    }
                 }
             }
+        }
+    }
+    else
+    {
+        unsigned CarePStack[64], CareNStack[64];
+        unsigned * pCareP = p->nWords <= 64 ? CarePStack : ABC_ALLOC( unsigned, p->nWords );
+        unsigned * pCareN = p->nWords <= 64 ? CareNStack : ABC_ALLOC( unsigned, p->nWords );
+        for ( w = 0; w < p->nWords; w++ )
+        {
+            pCareP[w] = ~puDataR[w] & p->pCareSet[w];
+            pCareN[w] =  puDataR[w] & p->pCareSet[w];
+        }
 
-            if ( Vec_PtrSize(p->vDivs2UN0) < ABC_RS_DIV2_MAX )
+        Vec_PtrForEachEntry( Abc_Obj_t *, p->vDivs1B, pObj0, i )
+        {
+            if ( (int)pObj0->Level > Required - 2 )
+                continue;
+
+            puData0 = (unsigned *)pObj0->pData;
+            Vec_PtrForEachEntryStart( Abc_Obj_t *, p->vDivs1B, pObj1, k, i + 1 )
             {
-                // get negative unate divisors
-                for ( w = 0; w < p->nWords; w++ )
-//                    if ( ~(puData0[w] & puData1[w]) & puDataR[w] )
-                    if ( ~(puData0[w] & puData1[w]) & puDataR[w] & p->pCareSet[w] ) // care set
-                        break;
-                if ( w == p->nWords )
+                if ( (int)pObj1->Level > Required - 2 )
+                    continue;
+
+                puData1 = (unsigned *)pObj1->pData;
+
+                if ( Vec_PtrSize(p->vDivs2UP0) < ABC_RS_DIV2_MAX )
                 {
-                    Vec_PtrPush( p->vDivs2UN0, pObj0 );
-                    Vec_PtrPush( p->vDivs2UN1, pObj1 );
+                    for ( w = 0; w < p->nWords; w++ )
+                        if ( (puData0[w] & puData1[w]) & pCareP[w] )
+                            break;
+                    if ( w == p->nWords )
+                    {
+                        Vec_PtrPush( p->vDivs2UP0, pObj0 );
+                        Vec_PtrPush( p->vDivs2UP1, pObj1 );
+                    }
+                    for ( w = 0; w < p->nWords; w++ )
+                        if ( (~puData0[w] & puData1[w]) & pCareP[w] )
+                            break;
+                    if ( w == p->nWords )
+                    {
+                        Vec_PtrPush( p->vDivs2UP0, Abc_ObjNot(pObj0) );
+                        Vec_PtrPush( p->vDivs2UP1, pObj1 );
+                    }
+                    for ( w = 0; w < p->nWords; w++ )
+                        if ( (puData0[w] & ~puData1[w]) & pCareP[w] )
+                            break;
+                    if ( w == p->nWords )
+                    {
+                        Vec_PtrPush( p->vDivs2UP0, pObj0 );
+                        Vec_PtrPush( p->vDivs2UP1, Abc_ObjNot(pObj1) );
+                    }
                 }
-                for ( w = 0; w < p->nWords; w++ )
-//                    if ( ~(~puData0[w] & puData1[w]) & puDataR[w] )
-                    if ( ~(~puData0[w] & puData1[w]) & puDataR[w] & p->pCareSet[w] ) // care set
-                        break;
-                if ( w == p->nWords )
+
+                if ( Vec_PtrSize(p->vDivs2UN0) < ABC_RS_DIV2_MAX )
                 {
-                    Vec_PtrPush( p->vDivs2UN0, Abc_ObjNot(pObj0) );
-                    Vec_PtrPush( p->vDivs2UN1, pObj1 );
-                }
-                for ( w = 0; w < p->nWords; w++ )
-//                    if ( ~(puData0[w] & ~puData1[w]) & puDataR[w] )
-                    if ( ~(puData0[w] & ~puData1[w]) & puDataR[w] & p->pCareSet[w] ) // care set
-                        break;
-                if ( w == p->nWords )
-                {
-                    Vec_PtrPush( p->vDivs2UN0, pObj0 );
-                    Vec_PtrPush( p->vDivs2UN1, Abc_ObjNot(pObj1) );
-                }
-                for ( w = 0; w < p->nWords; w++ )
-//                    if ( ~(puData0[w] | puData1[w]) & puDataR[w] )
-                    if ( ~(puData0[w] | puData1[w]) & puDataR[w] & p->pCareSet[w] ) // care set
-                        break;
-                if ( w == p->nWords )
-                {
-                    Vec_PtrPush( p->vDivs2UN0, Abc_ObjNot(pObj0) );
-                    Vec_PtrPush( p->vDivs2UN1, Abc_ObjNot(pObj1) );
+                    for ( w = 0; w < p->nWords; w++ )
+                        if ( ~(puData0[w] | puData1[w]) & pCareN[w] )
+                            break;
+                    if ( w == p->nWords )
+                    {
+                        Vec_PtrPush( p->vDivs2UN0, Abc_ObjNot(pObj0) );
+                        Vec_PtrPush( p->vDivs2UN1, Abc_ObjNot(pObj1) );
+                    }
                 }
             }
+        }
+        if ( p->nWords > 64 )
+        {
+            ABC_FREE( pCareP );
+            ABC_FREE( pCareN );
         }
     }
 //    printf( "%d %d  ", Vec_PtrSize(p->vDivs2UP0), Vec_PtrSize(p->vDivs2UN0) );
