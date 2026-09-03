@@ -116,17 +116,23 @@ clk = Abc_Clock();
 Aig_Obj_t * Aig_TableLookup( Aig_Man_t * p, Aig_Obj_t * pGhost )
 {
     Aig_Obj_t * pEntry;
+    Aig_Obj_t * pFanin0, * pFanin1;
+    unsigned uType, uHash;
     assert( !Aig_IsComplement(pGhost) );
     assert( Aig_ObjIsNode(pGhost) );
     assert( Aig_ObjChild0(pGhost) && Aig_ObjChild1(pGhost) );
     assert( Aig_ObjFanin0(pGhost)->Id < Aig_ObjFanin1(pGhost)->Id );
     if ( p->pTable == NULL || !Aig_ObjRefs(Aig_ObjFanin0(pGhost)) || !Aig_ObjRefs(Aig_ObjFanin1(pGhost)) )
         return NULL;
-    for ( pEntry = p->pTable[Aig_Hash(pGhost, p->nTableSize)]; pEntry; pEntry = pEntry->pNext )
+    pFanin0 = pGhost->pFanin0;
+    pFanin1 = pGhost->pFanin1;
+    uType   = pGhost->Type;
+    uHash   = Aig_Hash( pGhost, p->nTableSize );
+    for ( pEntry = p->pTable[uHash]; pEntry; pEntry = pEntry->pNext )
     {
-        if ( Aig_ObjChild0(pEntry) == Aig_ObjChild0(pGhost) && 
-             Aig_ObjChild1(pEntry) == Aig_ObjChild1(pGhost) && 
-             Aig_ObjType(pEntry) == Aig_ObjType(pGhost) )
+        if ( pEntry->pFanin0 == pFanin0 && 
+             pEntry->pFanin1 == pFanin1 && 
+             pEntry->Type == uType )
             return pEntry;
     }
     return NULL;
@@ -145,18 +151,46 @@ Aig_Obj_t * Aig_TableLookup( Aig_Man_t * p, Aig_Obj_t * pGhost )
 ***********************************************************************/
 Aig_Obj_t * Aig_TableLookupTwo( Aig_Man_t * p, Aig_Obj_t * pFanin0, Aig_Obj_t * pFanin1 )
 {
-    Aig_Obj_t * pGhost;
+    Aig_Obj_t * pEntry, * pR0, * pR1, * pTemp;
+    unsigned uKey, uHash;
+
     // consider simple cases
     if ( pFanin0 == pFanin1 )
         return pFanin0;
     if ( pFanin0 == Aig_Not(pFanin1) )
         return Aig_ManConst0(p);
-    if ( Aig_Regular(pFanin0) == Aig_ManConst1(p) )
-        return pFanin0 == Aig_ManConst1(p) ? pFanin1 : Aig_ManConst0(p);
-    if ( Aig_Regular(pFanin1) == Aig_ManConst1(p) )
-        return pFanin1 == Aig_ManConst1(p) ? pFanin0 : Aig_ManConst0(p);
-    pGhost = Aig_ObjCreateGhost( p, pFanin0, pFanin1, AIG_OBJ_AND );
-    return Aig_TableLookup( p, pGhost );
+    pR0 = Aig_Regular(pFanin0);
+    pR1 = Aig_Regular(pFanin1);
+    if ( pR0 == p->pConst1 )
+        return pFanin0 == p->pConst1 ? pFanin1 : Aig_ManConst0(p);
+    if ( pR1 == p->pConst1 )
+        return pFanin1 == p->pConst1 ? pFanin0 : Aig_ManConst0(p);
+    if ( p->pTable == NULL )
+        return NULL;
+    if ( pR0->nRefs == 0 || pR1->nRefs == 0 )
+        return NULL;
+
+    // canonicalize order (smaller ID first)
+    if ( pR0->Id > pR1->Id )
+    {
+        pTemp = pFanin0; pFanin0 = pFanin1; pFanin1 = pTemp;
+        pTemp = pR0; pR0 = pR1; pR1 = pTemp;
+    }
+
+    // compute hash key directly
+    uKey  = (unsigned)pR0->Id * 7937;
+    uKey ^= (unsigned)pR1->Id * 2971;
+    uKey ^= (unsigned)Aig_IsComplement(pFanin0) * 911;
+    uKey ^= (unsigned)Aig_IsComplement(pFanin1) * 353;
+    uHash = uKey % (unsigned)p->nTableSize;
+
+    // search bucket: compare fanin pointers directly
+    for ( pEntry = p->pTable[uHash]; pEntry; pEntry = pEntry->pNext )
+    {
+        if ( pEntry->pFanin0 == pFanin0 && pEntry->pFanin1 == pFanin1 && pEntry->Type == AIG_OBJ_AND )
+            return pEntry;
+    }
+    return NULL;
 }
 
 /**Function*************************************************************
@@ -172,14 +206,14 @@ Aig_Obj_t * Aig_TableLookupTwo( Aig_Man_t * p, Aig_Obj_t * pFanin0, Aig_Obj_t * 
 ***********************************************************************/
 void Aig_TableInsert( Aig_Man_t * p, Aig_Obj_t * pObj )
 {
-    Aig_Obj_t ** ppPlace;
+    unsigned uHash;
     assert( !Aig_IsComplement(pObj) );
     assert( Aig_TableLookup(p, pObj) == NULL );
     if ( (pObj->Id & 0xFF) == 0 && 2 * p->nTableSize < Aig_ManNodeNum(p) )
         Aig_TableResize( p );
-    ppPlace = Aig_TableFind( p, pObj );
-    assert( *ppPlace == NULL );
-    *ppPlace = pObj;
+    uHash = Aig_Hash( pObj, p->nTableSize );
+    pObj->pNext = p->pTable[uHash];
+    p->pTable[uHash] = pObj;
 }
 
 /**Function*************************************************************

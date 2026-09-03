@@ -403,6 +403,8 @@ Abc_Obj_t * Abc_AigAndCreateFrom( Abc_Aig_t * pMan, Abc_Obj_t * p0, Abc_Obj_t * 
 Abc_Obj_t * Abc_AigAndLookup( Abc_Aig_t * pMan, Abc_Obj_t * p0, Abc_Obj_t * p1 )
 {
     Abc_Obj_t * pAnd, * pConst1;
+    Abc_Obj_t * r0, * r1;
+    int Id0, Id1, c0, c1;
     unsigned Key;
     assert( Abc_ObjRegular(p0)->pNtk->pManFunc == pMan );
     assert( Abc_ObjRegular(p1)->pNtk->pManFunc == pMan );
@@ -412,51 +414,50 @@ Abc_Obj_t * Abc_AigAndLookup( Abc_Aig_t * pMan, Abc_Obj_t * p0, Abc_Obj_t * p1 )
         return p0;
     if ( p0 == Abc_ObjNot(p1) )
         return Abc_ObjNot(pConst1);
-    if ( Abc_ObjRegular(p0) == pConst1 )
+    r0 = Abc_ObjRegular(p0);
+    r1 = Abc_ObjRegular(p1);
+    if ( r0 == pConst1 )
     {
         if ( p0 == pConst1 )
             return p1;
         return Abc_ObjNot(pConst1);
     }
-    if ( Abc_ObjRegular(p1) == pConst1 )
+    if ( r1 == pConst1 )
     {
         if ( p1 == pConst1 )
             return p0;
         return Abc_ObjNot(pConst1);
     }
-/*
-    {
-        int nFans0 = Abc_ObjFanoutNum( Abc_ObjRegular(p0) );
-        int nFans1 = Abc_ObjFanoutNum( Abc_ObjRegular(p1) );
-        if ( nFans0 == 0 || nFans1 == 0 )
-            pMan->nStrash0++;
-        else if ( nFans0 == 1 || nFans1 == 1 )
-            pMan->nStrash1++;
-        else if ( nFans0 <= 100 && nFans1 <= 100 )
-            pMan->nStrash5++;
-        else
-            pMan->nStrash2++;
-    }
-*/
-    {
-        int nFans0 = Abc_ObjFanoutNum( Abc_ObjRegular(p0) );
-        int nFans1 = Abc_ObjFanoutNum( Abc_ObjRegular(p1) );
-        if ( nFans0 == 0 || nFans1 == 0 )
-            return NULL;
-    }
+    if ( r0->vFanouts.nSize == 0 || r1->vFanouts.nSize == 0 )
+        return NULL;
 
     // order the arguments
-    if ( Abc_ObjRegular(p0)->Id > Abc_ObjRegular(p1)->Id )
-        pAnd = p0, p0 = p1, p1 = pAnd;
+    Id0 = r0->Id;
+    Id1 = r1->Id;
+    c0 = Abc_ObjIsComplement(p0);
+    c1 = Abc_ObjIsComplement(p1);
+    if ( Id0 > Id1 )
+    {
+        int tId = Id0; Id0 = Id1; Id1 = tId;
+        int tc = c0; c0 = c1; c1 = tc;
+    }
+
     // get the hash key for these two nodes
-    Key = Abc_HashKey2( p0, p1, pMan->nBins );
+    Key = ((unsigned)Id0 * 7937) ^ ((unsigned)Id1 * 2971) ^
+          ((unsigned)c0 * 911) ^ ((unsigned)c1 * 353);
+    Key %= (unsigned)pMan->nBins;
+
     // find the matching node in the table
     Abc_AigBinForEachEntry( pMan->pBins[Key], pAnd )
-        if ( p0 == Abc_ObjChild0(pAnd) && p1 == Abc_ObjChild1(pAnd) )
+    {
+        if ( pAnd->fCompl0 == (unsigned)c0 &&
+             pAnd->fCompl1 == (unsigned)c1 &&
+             pAnd->vFanins.pArray[0] == Id0 &&
+             pAnd->vFanins.pArray[1] == Id1 )
         {
-//            assert( Abc_ObjFanoutNum(Abc_ObjRegular(p0)) && Abc_ObjFanoutNum(p1) );
              return pAnd;
         }
+    }
     return NULL;
 }
 
