@@ -677,17 +677,22 @@ static void sat_solver_canceluntil(sat_solver* s, int level) {
 //        bound = 0;
     ////////////////////////////////////////
 
-    for (c = s->qtail-1; c >= bound; c--) {
+    for (c = s->qtail-1; c >= s->qhead; c--) {
         int     x  = lit_var(s->trail[c]);
         var_set_value(s, x, varX);
         s->reasons[x] = 0;
         if ( c < lastLev )
             var_set_polar( s, x, !lit_sign(s->trail[c]) );
     }
-    //printf( "\n" );
 
-    for (c = s->qhead-1; c >= bound; c--)
-        order_unassigned(s,lit_var(s->trail[c]));
+    for (c = s->qhead-1; c >= bound; c--) {
+        int     x  = lit_var(s->trail[c]);
+        var_set_value(s, x, varX);
+        s->reasons[x] = 0;
+        if ( c < lastLev )
+            var_set_polar( s, x, !lit_sign(s->trail[c]) );
+        order_unassigned(s, x);
+    }
 
     s->qhead = s->qtail = bound;
     veci_resize(&s->trail_lim,level);
@@ -1084,16 +1089,25 @@ int sat_solver_propagate(sat_solver* s)
 
                 // Make sure the false literal is data[1]:
                 false_lit = lit_neg(p);
+
+                // Check satisfaction before writing to clause memory
                 if (lits[0] == false_lit){
+                    if (var_value(s, lit_var(lits[1])) == lit_sign(lits[1])){
+                        *j++ = *i;
+                        goto next;
+                    }
                     lits[0] = lits[1];
                     lits[1] = false_lit;
                 }
-                assert(lits[1] == false_lit);
+                else {
+                    assert(lits[1] == false_lit);
+                    if (var_value(s, lit_var(lits[0])) == lit_sign(lits[0])){
+                        *j++ = *i;
+                        goto next;
+                    }
+                }
 
-                // If 0th watch is true, then clause is already satisfied.
-                if (var_value(s, lit_var(lits[0])) == lit_sign(lits[0]))
-                    *j++ = *i;
-                else{
+                {
                     // Look for new watch:
                     lit* stop = lits + clause_size(c);
                     lit* k;
