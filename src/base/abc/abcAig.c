@@ -404,6 +404,7 @@ Abc_Obj_t * Abc_AigAndLookup( Abc_Aig_t * pMan, Abc_Obj_t * p0, Abc_Obj_t * p1 )
 {
     Abc_Obj_t * pAnd, * pConst1;
     unsigned Key;
+    int Id0, Id1, c0, c1;
     assert( Abc_ObjRegular(p0)->pNtk->pManFunc == pMan );
     assert( Abc_ObjRegular(p1)->pNtk->pManFunc == pMan );
     // check for trivial cases
@@ -448,13 +449,18 @@ Abc_Obj_t * Abc_AigAndLookup( Abc_Aig_t * pMan, Abc_Obj_t * p0, Abc_Obj_t * p1 )
     // order the arguments
     if ( Abc_ObjRegular(p0)->Id > Abc_ObjRegular(p1)->Id )
         pAnd = p0, p0 = p1, p1 = pAnd;
-    // get the hash key for these two nodes
     Key = Abc_HashKey2( p0, p1, pMan->nBins );
+    Id0 = Abc_ObjRegular(p0)->Id;
+    Id1 = Abc_ObjRegular(p1)->Id;
+    c0  = Abc_ObjIsComplement(p0);
+    c1  = Abc_ObjIsComplement(p1);
     // find the matching node in the table
     Abc_AigBinForEachEntry( pMan->pBins[Key], pAnd )
-        if ( p0 == Abc_ObjChild0(pAnd) && p1 == Abc_ObjChild1(pAnd) )
+        if ( pAnd->vFanins.pArray[0] == Id0 && 
+             pAnd->vFanins.pArray[1] == Id1 && 
+             (int)pAnd->fCompl0 == c0 && 
+             (int)pAnd->fCompl1 == c1 )
         {
-//            assert( Abc_ObjFanoutNum(Abc_ObjRegular(p0)) && Abc_ObjFanoutNum(p1) );
              return pAnd;
         }
     return NULL;
