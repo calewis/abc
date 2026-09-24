@@ -120,12 +120,13 @@ void Saig_ManPrintConeOne( Aig_Man_t * p, Aig_Obj_t * pObj )
         nCurNew = nCurPrev = nCurOld = 0;
         Vec_PtrForEachEntry( Aig_Obj_t *, vCur, pObj, i )
         {
-            if ( Vec_PtrFind(vTotal, pObj) == -1 )
+            if ( !pObj->fMarkA )
             {
+                pObj->fMarkA = 1;
                 Vec_PtrPush( vTotal, pObj );
                 nCurNew++;
             }
-            else if ( Vec_PtrFind(vPrev, pObj) >= 0 )
+            else if ( pObj->fMarkB )
                 nCurPrev++;
             else
                 nCurOld++;
@@ -136,10 +137,18 @@ void Saig_ManPrintConeOne( Aig_Man_t * p, Aig_Obj_t * pObj )
         if ( nCurNew == 0 )
             break;
         // compute one more step
+        Vec_PtrForEachEntry( Aig_Obj_t *, vPrev, pObj, i )
+            pObj->fMarkB = 0;
+        Vec_PtrForEachEntry( Aig_Obj_t *, vCur, pObj, i )
+            pObj->fMarkB = 1;
         Vec_PtrFree( vPrev );
         vCur = Saig_ManSupport( p, vPrev = vCur );
     }
     printf( "\n" );
+    Vec_PtrForEachEntry( Aig_Obj_t *, vPrev, pObj, i )
+        pObj->fMarkB = 0;
+    Vec_PtrForEachEntry( Aig_Obj_t *, vTotal, pObj, i )
+        pObj->fMarkA = 0;
     Vec_PtrFree( vPrev );
     Vec_PtrFree( vCur );
     Vec_PtrFree( vTotal );

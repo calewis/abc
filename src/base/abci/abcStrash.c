@@ -594,8 +594,9 @@ Abc_Ntk_t * Abc_NtkTopmost( Abc_Ntk_t * pNtk, int nLevels )
 Abc_Obj_t * Abc_NtkBottommost_rec( Abc_Ntk_t * pNtkNew, Abc_Obj_t * pNode, int LevelCut )
 {
     assert( !Abc_ObjIsComplement(pNode) );
-    if ( pNode->pCopy )
+    if ( pNode->pCopy || Abc_NodeIsTravIdCurrent(pNode) )
         return pNode->pCopy;
+    Abc_NodeSetTravIdCurrent( pNode );
     Abc_NtkBottommost_rec( pNtkNew, Abc_ObjFanin0(pNode), LevelCut );
     Abc_NtkBottommost_rec( pNtkNew, Abc_ObjFanin1(pNode), LevelCut );
     if ( pNode->Level > (unsigned)LevelCut )
@@ -626,6 +627,7 @@ Abc_Ntk_t * Abc_NtkBottommost( Abc_Ntk_t * pNtk, int nLevels )
     pNtkNew->pName = Extra_UtilStrsav(pNtk->pName);
     // create PIs below the cut and nodes above the cut
     Abc_NtkCleanCopy( pNtk );
+    Abc_NtkIncrementTravId( pNtk );
     Abc_AigConst1(pNtk)->pCopy = Abc_AigConst1(pNtkNew);
     Abc_NtkForEachCi( pNtk, pObj, i )
         pObj->pCopy = Abc_NtkCreatePi( pNtkNew );

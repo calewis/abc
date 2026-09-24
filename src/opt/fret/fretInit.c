@@ -240,16 +240,35 @@ static void Abc_FlowRetime_EvalHop_rec( Hop_Man_t *pHop, Hop_Obj_t *pObj, int *f
 
   // AND
   if (Hop_ObjIsAnd(pReg)) {
-    Abc_FlowRetime_EvalHop_rec(pHop, Hop_ObjChild0(pReg), &f1, &dc1);
-    Abc_FlowRetime_EvalHop_rec(pHop, Hop_ObjChild1(pReg), &f2, &dc2);
+    if (!pReg->fMarkA) {
+      Abc_FlowRetime_EvalHop_rec(pHop, Hop_ObjChild0(pReg), &f1, &dc1);
+      Abc_FlowRetime_EvalHop_rec(pHop, Hop_ObjChild1(pReg), &f2, &dc2);
 
-    *dc = (dc1 & f2) | (dc2 & f1) | (dc1 & dc2);
-    *f  = f1 & f2;
-    *f ^= (pReg == pObj ? 1 : 0);
+      pReg->fMarkA = 1;
+      pReg->fMarkB = (dc1 & f2) | (dc2 & f1) | (dc1 & dc2);
+      pReg->iData  = f1 & f2;
+    }
+    *dc = pReg->fMarkB;
+    *f  = pReg->iData ^ (pReg == pObj ? 1 : 0);
     return;
   }
 
   assert(0);
+}
+
+static void Abc_FlowRetime_CleanHop_rec( Hop_Obj_t *pObj ) {
+  Hop_Obj_t *pReg = Hop_Regular(pObj);
+  if (Hop_ObjIsPo(pReg)) {
+    Abc_FlowRetime_CleanHop_rec(Hop_ObjChild0(pReg));
+    return;
+  }
+  if (!Hop_ObjIsAnd(pReg) || !pReg->fMarkA)
+    return;
+  Abc_FlowRetime_CleanHop_rec(Hop_ObjChild0(pReg));
+  Abc_FlowRetime_CleanHop_rec(Hop_ObjChild1(pReg));
+  pReg->fMarkA = 0;
+  pReg->fMarkB = 0;
+  pReg->pData  = NULL;
 }
 
 
@@ -377,6 +396,7 @@ void Abc_FlowRetime_SimulateNode( Abc_Obj_t * pObj ) {
     }
 
     Abc_FlowRetime_EvalHop_rec( pHop, (Hop_Obj_t*)pObj->pData, &rVar, &dcVar );
+    Abc_FlowRetime_CleanHop_rec( (Hop_Obj_t*)pObj->pData );
    
     Abc_FlowRetime_SetInitValue(pObj, rVar, dcVar);
 
